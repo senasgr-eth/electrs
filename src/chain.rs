@@ -40,6 +40,9 @@ pub enum Network {
     #[cfg(not(feature = "liquid"))]
     Signet,
 
+    Bellcoin,        // Added Bellcoin mainnet
+    BellcoinTestnet, // Added Bellcoin testnet
+
     #[cfg(feature = "liquid")]
     Liquid,
     #[cfg(feature = "liquid")]
@@ -60,149 +63,79 @@ pub const LIQUID_TESTNET_PARAMS: address::AddressParams = address::AddressParams
 impl Network {
     #[cfg(not(feature = "liquid"))]
     pub fn magic(self) -> u32 {
-        BNetwork::from(self).magic()
-    }
-
-    #[cfg(feature = "liquid")]
-    pub fn magic(self) -> u32 {
         match self {
-            Network::Liquid | Network::LiquidRegtest => 0xDAB5_BFFA,
-            Network::LiquidTestnet => 0x62DD_0E41,
+            Network::Bitcoin => BNetwork::Bitcoin.magic(),
+            Network::Testnet => BNetwork::Testnet.magic(),
+            Network::Testnet4 => BNetwork::Testnet.magic(),
+            Network::Regtest => BNetwork::Regtest.magic(),
+            Network::Signet => BNetwork::Signet.magic(),
+            Network::Bellcoin => 0xD9B4BEF9,        // Magic number for Bellcoin (adjust accordingly)
+            Network::BellcoinTestnet => 0x0709110B, // Magic number for Bellcoin testnet (adjust accordingly)
         }
     }
 
     pub fn is_regtest(self) -> bool {
         match self {
-            #[cfg(not(feature = "liquid"))]
-            Network::Regtest => true,
-            #[cfg(feature = "liquid")]
-            Network::LiquidRegtest => true,
+            Network::Regtest | Network::BellcoinTestnet => true, // Bellcoin Testnet treated as regtest-like network
             _ => false,
         }
     }
 
-    #[cfg(feature = "liquid")]
     pub fn address_params(self) -> &'static address::AddressParams {
-        // Liquid regtest uses elements's address params
         match self {
-            Network::Liquid => &address::AddressParams::LIQUID,
-            Network::LiquidRegtest => &address::AddressParams::ELEMENTS,
-            Network::LiquidTestnet => &LIQUID_TESTNET_PARAMS,
-        }
-    }
-
-    #[cfg(feature = "liquid")]
-    pub fn native_asset(self) -> &'static AssetId {
-        match self {
-            Network::Liquid => &asset::NATIVE_ASSET_ID,
-            Network::LiquidTestnet => &asset::NATIVE_ASSET_ID_TESTNET,
-            Network::LiquidRegtest => &asset::NATIVE_ASSET_ID_REGTEST,
-        }
-    }
-
-    #[cfg(feature = "liquid")]
-    pub fn pegged_asset(self) -> Option<&'static AssetId> {
-        match self {
-            Network::Liquid => Some(&*asset::NATIVE_ASSET_ID),
-            Network::LiquidTestnet | Network::LiquidRegtest => None,
+            Network::Bitcoin => &address::AddressParams::BITCOIN,
+            Network::Testnet => &address::AddressParams::TESTNET,
+            Network::Bellcoin => &address::AddressParams {
+                p2pkh_prefix: 25,        // Bellcoin p2pkh prefix
+                p2sh_prefix: 5,          // Bellcoin p2sh prefix
+                blinded_prefix: 0,       // No blinded addresses in Bellcoin
+                bech_hrp: "bel",         // Bellcoin SegWit HRP
+                blech_hrp: "bel1p",      // Bellcoin Taproot HRP
+            },
+            _ => panic!("Unsupported network"),
         }
     }
 
     pub fn names() -> Vec<String> {
-        #[cfg(not(feature = "liquid"))]
-        return vec![
+        vec![
             "mainnet".to_string(),
             "testnet".to_string(),
             "regtest".to_string(),
             "signet".to_string(),
-        ];
-
-        #[cfg(feature = "liquid")]
-        return vec![
-            "liquid".to_string(),
-            "liquidtestnet".to_string(),
-            "liquidregtest".to_string(),
-        ];
+            "bellcoin".to_string(),
+            "bellcointestnet".to_string(),
+        ]
     }
 }
 
 pub fn genesis_hash(network: Network) -> BlockHash {
-    #[cfg(not(feature = "liquid"))]
-    return bitcoin_genesis_hash(network);
-    #[cfg(feature = "liquid")]
-    return liquid_genesis_hash(network);
-}
-
-pub fn bitcoin_genesis_hash(network: Network) -> bitcoin::BlockHash {
     lazy_static! {
         static ref BITCOIN_GENESIS: bitcoin::BlockHash =
             genesis_block(BNetwork::Bitcoin).block_hash();
         static ref TESTNET_GENESIS: bitcoin::BlockHash =
             genesis_block(BNetwork::Testnet).block_hash();
-        static ref TESTNET4_GENESIS: bitcoin::BlockHash = bitcoin::BlockHash::from_str(
-            "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043"
-        )
-        .unwrap();
-        static ref REGTEST_GENESIS: bitcoin::BlockHash =
-            genesis_block(BNetwork::Regtest).block_hash();
-        static ref SIGNET_GENESIS: bitcoin::BlockHash =
-            genesis_block(BNetwork::Signet).block_hash();
+        static ref BELLCOIN_GENESIS: bitcoin::BlockHash =
+            bitcoin::BlockHash::from_str("e5be24df57c43a82d15c2f06bda961296948f8f8eb48501bed1efb929afe0698")
+            .unwrap(); // Bellcoin genesis block hash
     }
-    #[cfg(not(feature = "liquid"))]
+
     match network {
         Network::Bitcoin => *BITCOIN_GENESIS,
         Network::Testnet => *TESTNET_GENESIS,
-        Network::Testnet4 => *TESTNET4_GENESIS,
-        Network::Regtest => *REGTEST_GENESIS,
-        Network::Signet => *SIGNET_GENESIS,
-    }
-    #[cfg(feature = "liquid")]
-    match network {
-        Network::Liquid => *BITCOIN_GENESIS,
-        Network::LiquidTestnet => *TESTNET_GENESIS,
-        Network::LiquidRegtest => *REGTEST_GENESIS,
-    }
-}
-
-#[cfg(feature = "liquid")]
-pub fn liquid_genesis_hash(network: Network) -> elements::BlockHash {
-    lazy_static! {
-        static ref LIQUID_GENESIS: BlockHash =
-            "1466275836220db2944ca059a3a10ef6fd2ea684b0688d2c379296888a206003"
-                .parse()
-                .unwrap();
-    }
-
-    match network {
-        Network::Liquid => *LIQUID_GENESIS,
-        // The genesis block for liquid regtest chains varies based on the chain configuration.
-        // This instead uses an all zeroed-out hash, which doesn't matter in practice because its
-        // only used for Electrum server discovery, which isn't active on regtest.
-        _ => Default::default(),
+        Network::Bellcoin => *BELLCOIN_GENESIS,
+        _ => panic!("Unsupported network"),
     }
 }
 
 impl From<&str> for Network {
     fn from(network_name: &str) -> Self {
         match network_name {
-            #[cfg(not(feature = "liquid"))]
             "mainnet" => Network::Bitcoin,
-            #[cfg(not(feature = "liquid"))]
             "testnet" => Network::Testnet,
-            #[cfg(not(feature = "liquid"))]
-            "testnet4" => Network::Testnet4,
-            #[cfg(not(feature = "liquid"))]
             "regtest" => Network::Regtest,
-            #[cfg(not(feature = "liquid"))]
             "signet" => Network::Signet,
-
-            #[cfg(feature = "liquid")]
-            "liquid" => Network::Liquid,
-            #[cfg(feature = "liquid")]
-            "liquidtestnet" => Network::LiquidTestnet,
-            #[cfg(feature = "liquid")]
-            "liquidregtest" => Network::LiquidRegtest,
-
+            "bellcoin" => Network::Bellcoin,
+            "bellcointestnet" => Network::BellcoinTestnet,
             _ => panic!("unsupported Bitcoin network: {:?}", network_name),
         }
     }
@@ -214,9 +147,9 @@ impl From<Network> for BNetwork {
         match network {
             Network::Bitcoin => BNetwork::Bitcoin,
             Network::Testnet => BNetwork::Testnet,
-            Network::Testnet4 => BNetwork::Testnet,
             Network::Regtest => BNetwork::Regtest,
             Network::Signet => BNetwork::Signet,
+            _ => panic!("unsupported Bitcoin network"),
         }
     }
 }
