@@ -343,144 +343,171 @@ impl Config {
         let db_path = db_dir.join(network_name);
 
         #[cfg(feature = "liquid")]
-        let parent_network = m
-            .value_of("parent_network")
-            .map(|s| s.parse().expect("invalid parent network"))
-            .unwrap_or_else(|| match network_type {
-                Network::Liquid => BNetwork::Bitcoin,
-                // XXX liquid testnet/regtest don't have a parent chain
-                Network::LiquidTestnet | Network::LiquidRegtest => BNetwork::Regtest,
-            });
+let parent_network = m
+    .value_of("parent_network")
+    .map(|s| s.parse().expect("invalid parent network"))
+    .unwrap_or_else(|| match network_type {
+        Network::Liquid => BNetwork::Bitcoin,
+        // XXX liquid testnet/regtest don't have a parent chain
+        Network::LiquidTestnet | Network::LiquidRegtest => BNetwork::Regtest,
+    });
 
-        #[cfg(feature = "liquid")]
-        let asset_db_path = m.value_of("asset_db_path").map(PathBuf::from);
+#[cfg(feature = "liquid")]
+let asset_db_path = m.value_of("asset_db_path").map(PathBuf::from);
 
-        let default_daemon_port = match network_type {
-            #[cfg(not(feature = "liquid"))]
-            Network::Bitcoin => 8332,
-            #[cfg(not(feature = "liquid"))]
-            Network::Testnet => 18332,
-            #[cfg(not(feature = "liquid"))]
-            Network::Regtest => 18443,
-            #[cfg(not(feature = "liquid"))]
-            Network::Signet => 38332,
-            #[cfg(not(feature = "liquid"))]
-            Network::Testnet4 => 48332,
+let default_daemon_port = match network_type {
+    #[cfg(not(feature = "liquid"))]
+    Network::Bitcoin => 8332,
+    #[cfg(not(feature = "liquid"))]
+    Network::Testnet => 18332,
+    #[cfg(not(feature = "liquid"))]
+    Network::Regtest => 18443,
+    #[cfg(not(feature = "liquid"))]
+    Network::Signet => 38332,
+    #[cfg(not(feature = "liquid"))]
+    Network::Testnet4 => 48332,
 
-            #[cfg(feature = "liquid")]
-            Network::Liquid => 7041,
-            #[cfg(feature = "liquid")]
-            Network::LiquidTestnet | Network::LiquidRegtest => 7040,
-        };
-        let default_electrum_port = match network_type {
-            #[cfg(not(feature = "liquid"))]
-            Network::Bitcoin => 50001,
-            #[cfg(not(feature = "liquid"))]
-            Network::Testnet => 60001,
-            #[cfg(not(feature = "liquid"))]
-            Network::Testnet4 => 40001,
-            #[cfg(not(feature = "liquid"))]
-            Network::Regtest => 60401,
-            #[cfg(not(feature = "liquid"))]
-            Network::Signet => 60601,
+    // Added Bellcoin network configurations
+    Network::Bellcoin => 19918,         // RPC port for Bellcoin
+    Network::BellcoinTestnet => 19918,  // RPC port for Bellcoin Testnet
 
-            #[cfg(feature = "liquid")]
-            Network::Liquid => 51000,
-            #[cfg(feature = "liquid")]
-            Network::LiquidTestnet => 51301,
-            #[cfg(feature = "liquid")]
-            Network::LiquidRegtest => 51401,
-        };
-        let default_http_port = match network_type {
-            #[cfg(not(feature = "liquid"))]
-            Network::Bitcoin => 3000,
-            #[cfg(not(feature = "liquid"))]
-            Network::Testnet => 3001,
-            #[cfg(not(feature = "liquid"))]
-            Network::Regtest => 3002,
-            #[cfg(not(feature = "liquid"))]
-            Network::Signet => 3003,
-            #[cfg(not(feature = "liquid"))]
-            Network::Testnet4 => 3004,
+    #[cfg(feature = "liquid")]
+    Network::Liquid => 7041,
+    #[cfg(feature = "liquid")]
+    Network::LiquidTestnet | Network::LiquidRegtest => 7040,
+};
 
-            #[cfg(feature = "liquid")]
-            Network::Liquid => 3000,
-            #[cfg(feature = "liquid")]
-            Network::LiquidTestnet => 3001,
-            #[cfg(feature = "liquid")]
-            Network::LiquidRegtest => 3002,
-        };
-        let default_monitoring_port = match network_type {
-            #[cfg(not(feature = "liquid"))]
-            Network::Bitcoin => 4224,
-            #[cfg(not(feature = "liquid"))]
-            Network::Testnet => 14224,
-            #[cfg(not(feature = "liquid"))]
-            Network::Regtest => 24224,
-            #[cfg(not(feature = "liquid"))]
-            Network::Testnet4 => 44224,
-            #[cfg(not(feature = "liquid"))]
-            Network::Signet => 54224,
+// Adjust default Electrum and HTTP ports if necessary (optional)
+let default_electrum_port = match network_type {
+    #[cfg(not(feature = "liquid"))]
+    Network::Bitcoin => 50001,
+    #[cfg(not(feature = "liquid"))]
+    Network::Testnet => 60001,
+    #[cfg(not(feature = "liquid"))]
+    Network::Testnet4 => 40001,
+    #[cfg(not(feature = "liquid"))]
+    Network::Regtest => 60401,
+    #[cfg(not(feature = "liquid"))]
+    Network::Signet => 60601,
 
-            #[cfg(feature = "liquid")]
-            Network::Liquid => 34224,
-            #[cfg(feature = "liquid")]
-            Network::LiquidTestnet => 44324,
-            #[cfg(feature = "liquid")]
-            Network::LiquidRegtest => 44224,
-        };
+    // Add Electrum ports for Bellcoin if needed
+    Network::Bellcoin => 50002,          // Placeholder Electrum port for Bellcoin
+    Network::BellcoinTestnet => 50003,   // Placeholder Electrum port for Bellcoin Testnet
 
-        let daemon_rpc_addr: SocketAddr = str_to_socketaddr(
-            m.value_of("daemon_rpc_addr")
-                .unwrap_or(&format!("127.0.0.1:{}", default_daemon_port)),
-            "Bitcoin RPC",
-        );
-        let electrum_rpc_addr: SocketAddr = str_to_socketaddr(
-            m.value_of("electrum_rpc_addr")
-                .unwrap_or(&format!("127.0.0.1:{}", default_electrum_port)),
-            "Electrum RPC",
-        );
-        let http_addr: SocketAddr = str_to_socketaddr(
-            m.value_of("http_addr")
-                .unwrap_or(&format!("127.0.0.1:{}", default_http_port)),
-            "HTTP Server",
-        );
+    #[cfg(feature = "liquid")]
+    Network::Liquid => 51000,
+    #[cfg(feature = "liquid")]
+    Network::LiquidTestnet => 51301,
+    #[cfg(feature = "liquid")]
+    Network::LiquidRegtest => 51401,
+};
 
-        let http_socket_file: Option<PathBuf> = m.value_of("http_socket_file").map(PathBuf::from);
-        let rpc_socket_file: Option<PathBuf> = m.value_of("rpc_socket_file").map(PathBuf::from);
-        let monitoring_addr: SocketAddr = str_to_socketaddr(
-            m.value_of("monitoring_addr")
-                .unwrap_or(&format!("127.0.0.1:{}", default_monitoring_port)),
-            "Prometheus monitoring",
-        );
+let default_http_port = match network_type {
+    #[cfg(not(feature = "liquid"))]
+    Network::Bitcoin => 3000,
+    #[cfg(not(feature = "liquid"))]
+    Network::Testnet => 3001,
+    #[cfg(not(feature = "liquid"))]
+    Network::Regtest => 3002,
+    #[cfg(not(feature = "liquid"))]
+    Network::Signet => 3003,
+    #[cfg(not(feature = "liquid"))]
+    Network::Testnet4 => 3004,
 
-        let mut daemon_dir = m
-            .value_of("daemon_dir")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| {
-                let mut default_dir = home_dir().expect("no homedir");
-                default_dir.push(".bitcoin");
-                default_dir
-            });
+    // HTTP ports for Bellcoin
+    Network::Bellcoin => 3005,           // Placeholder HTTP port for Bellcoin
+    Network::BellcoinTestnet => 3006,    // Placeholder HTTP port for Bellcoin Testnet
+
+    #[cfg(feature = "liquid")]
+    Network::Liquid => 3000,
+    #[cfg(feature = "liquid")]
+    Network::LiquidTestnet => 3001,
+    #[cfg(feature = "liquid")]
+    Network::LiquidRegtest => 3002,
+};
+
+let default_monitoring_port = match network_type {
+    #[cfg(not(feature = "liquid"))]
+    Network::Bitcoin => 4224,
+    #[cfg(not(feature = "liquid"))]
+    Network::Testnet => 14224,
+    #[cfg(not(feature = "liquid"))]
+    Network::Regtest => 24224,
+    #[cfg(not(feature = "liquid"))]
+    Network::Testnet4 => 44224,
+    #[cfg(not(feature = "liquid"))]
+    Network::Signet => 54224,
+
+    #[cfg(feature = "liquid")]
+    Network::Liquid => 34224,
+    #[cfg(feature = "liquid")]
+    Network::LiquidTestnet => 44324,
+    #[cfg(feature = "liquid")]
+    Network::LiquidRegtest => 44224,
+};
+
+// Set daemon_rpc_addr to point to the Bellcoin RPC port
+let daemon_rpc_addr: SocketAddr = str_to_socketaddr(
+    m.value_of("daemon_rpc_addr")
+        .unwrap_or(&format!("127.0.0.1:{}", match network_type {
+            Network::Bellcoin => 19918,          // Bellcoin RPC port
+            Network::BellcoinTestnet => 19918,   // Bellcoin Testnet RPC port
+            _ => default_daemon_port,
+        })),
+    "Bitcoin RPC",
+);
+
+// Other address setups remain the same
+let electrum_rpc_addr: SocketAddr = str_to_socketaddr(
+    m.value_of("electrum_rpc_addr")
+        .unwrap_or(&format!("127.0.0.1:{}", default_electrum_port)),
+    "Electrum RPC",
+);
+let http_addr: SocketAddr = str_to_socketaddr(
+    m.value_of("http_addr")
+        .unwrap_or(&format!("127.0.0.1:{}", default_http_port)),
+    "HTTP Server",
+);
+
+let http_socket_file: Option<PathBuf> = m.value_of("http_socket_file").map(PathBuf::from);
+let rpc_socket_file: Option<PathBuf> = m.value_of("rpc_socket_file").map(PathBuf::from);
+let monitoring_addr: SocketAddr = str_to_socketaddr(
+    m.value_of("monitoring_addr")
+        .unwrap_or(&format!("127.0.0.1:{}", default_monitoring_port)),
+    "Prometheus monitoring",
+);
+
+// Adjust daemon_dir to point to the Bellcoin config path
+let mut daemon_dir = m
+    .value_of("daemon_dir")
+    .map(PathBuf::from)
+    .unwrap_or_else(|| {
+        let mut default_dir = home_dir().expect("no homedir");
         match network_type {
             #[cfg(not(feature = "liquid"))]
-            Network::Bitcoin => (),
+            Network::Bitcoin => default_dir.push(".bitcoin"),
             #[cfg(not(feature = "liquid"))]
-            Network::Testnet => daemon_dir.push("testnet3"),
+            Network::Testnet => default_dir.push("testnet3"),
             #[cfg(not(feature = "liquid"))]
-            Network::Testnet4 => daemon_dir.push("testnet4"),
+            Network::Testnet4 => default_dir.push("testnet4"),
             #[cfg(not(feature = "liquid"))]
-            Network::Regtest => daemon_dir.push("regtest"),
+            Network::Regtest => default_dir.push("regtest"),
             #[cfg(not(feature = "liquid"))]
-            Network::Signet => daemon_dir.push("signet"),
+            Network::Signet => default_dir.push("signet"),
 
             #[cfg(feature = "liquid")]
-            Network::Liquid => daemon_dir.push("liquidv1"),
+            Network::Liquid => default_dir.push("liquidv1"),
             #[cfg(feature = "liquid")]
-            Network::LiquidTestnet => daemon_dir.push("liquidtestnet"),
+            Network::LiquidTestnet => default_dir.push("liquidtestnet"),
             #[cfg(feature = "liquid")]
-            Network::LiquidRegtest => daemon_dir.push("liquidregtest"),
+            Network::LiquidRegtest => default_dir.push("liquidregtest"),
+            // Add case for Bellcoin
+            Network::Bellcoin => default_dir.push(".bells"),
+            Network::BellcoinTestnet => default_dir.push(".bells"), // Adjust as necessary for Bellcoin Testnet
         }
+        default_dir
+    });
+
         let blocks_dir = m
             .value_of("blocks_dir")
             .map(PathBuf::from)
