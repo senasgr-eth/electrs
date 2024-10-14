@@ -485,25 +485,25 @@ let mut daemon_dir = m
         let mut default_dir = home_dir().expect("no homedir");
         match network_type {
             #[cfg(not(feature = "liquid"))]
-            Network::Bitcoin => default_dir.push(".bitcoin"),
+            Network::Bitcoin => daemon_dir.push(".bitcoin"),
             #[cfg(not(feature = "liquid"))]
-            Network::Testnet => default_dir.push("testnet3"),
+            Network::Testnet => daemon_dir.push("testnet3"),
             #[cfg(not(feature = "liquid"))]
-            Network::Testnet4 => default_dir.push("testnet4"),
+            Network::Testnet4 => daemon_dir.push("testnet4"),
             #[cfg(not(feature = "liquid"))]
-            Network::Regtest => default_dir.push("regtest"),
+            Network::Regtest => daemon_dir.push("regtest"),
             #[cfg(not(feature = "liquid"))]
-            Network::Signet => default_dir.push("signet"),
+            Network::Signet => daemon_dir.push("signet"),
 
             #[cfg(feature = "liquid")]
-            Network::Liquid => default_dir.push("liquidv1"),
+            Network::Liquid => daemon_dir.push("liquidv1"),
             #[cfg(feature = "liquid")]
-            Network::LiquidTestnet => default_dir.push("liquidtestnet"),
+            Network::LiquidTestnet => daemon_dir.push("liquidtestnet"),
             #[cfg(feature = "liquid")]
-            Network::LiquidRegtest => default_dir.push("liquidregtest"),
+            Network::LiquidRegtest => daemon_dir.push("liquidregtest"),
             // Add case for Bellcoin
-            Network::Bellcoin => default_dir.push(".bells"),
-            Network::BellcoinTestnet => default_dir.push(".bells"), // Adjust as necessary for Bellcoin Testnet
+            Network::Bellcoin => daemon_dir.push(".bells"),
+            Network::BellcoinTestnet => daemon_dir.push(".bells"), // Adjust as necessary for Bellcoin Testnet
         }
         default_dir
     });
